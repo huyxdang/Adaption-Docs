@@ -2,6 +2,8 @@
 
 Use this reference for implementation, debugging, documentation contribution, or workflows spanning multiple Adaption areas. Do not load it for a narrow factual answer.
 
+These notes are navigation aids, not a separate authority. Reverify version-sensitive behavior against the current official page and relevant API reference before using it; check the installed SDK version and types when writing or debugging code.
+
 ## Source hierarchy
 
 1. Use `docs.adaptionlabs.ai` guides for the intended workflow and conceptual behavior.
@@ -10,7 +12,7 @@ Use this reference for implementation, debugging, documentation contribution, or
 
 The documentation site is built from the repository with Astro, Starlight, and Stainless. Authored guides live in `src/content/docs/`. The API reference is generated at build time from `spec/openapi.json` and `spec/openapi.stainless.yml`; those spec files are synchronized from the API source and should not be edited by hand in the docs repository. For a reference defect, identify the endpoint and report the mismatch instead of patching the generated spec.
 
-## Adaptive Data invariants
+## Adaptive Data workflow notes
 
 - The SDK reads `ADAPTION_API_KEY` automatically when constructing `Adaption()`.
 - `datasets.create` can import provider data or initiate a local upload. A local upload is not complete until the bytes are PUT to the presigned URL and the upload is confirmed with size and SHA-256.
@@ -20,12 +22,12 @@ The documentation site is built from the repository with Astro, Starlight, and S
 - `datasets.download(...)` returns response content, not a link. Use `.write_to_file(...)`, `.read()`, `.text()`, or the streaming response as appropriate to the current SDK version.
 - Parquet download output is a gzipped tar archive of shards; name and extract it accordingly.
 
-## AutoScientist invariants
+## AutoScientist workflow notes
 
 - Prefer a dataset that has completed Adaptive Data. A raw dataset is an explicit alternative, not the default recommendation.
 - Use a model ID returned by `autoscientist.list_models()` when the user requires a specific supported model. Otherwise allow platform selection.
 - Omit `column_mapping` when platform inference is appropriate. If provided, map columns in the processed dataset schema, not blindly from the original uploaded headers.
-- Use an idempotency key when a create request could be retried.
+- Use an idempotency key for create requests that may be retried. Save the run ID as soon as a create request returns, and retrieve that run before resubmitting after an interruption. The [create reference](https://docs.adaptionlabs.ai/api/resources/autoscientist/methods/create) scopes idempotency keys to a dataset and deduplicates only while the run is in progress. Reusing the key after success, failure, or cancellation starts a new run and can consume credits. If no run ID was received, inspect existing runs to resolve the outcome before retrying; do not blindly resubmit an uncertain request. Start another run only when it is intended and authorized.
 - Wait for `succeeded`, `failed`, or `cancelled`; inspect the error on non-success and inspect `best_win_rate` on success.
 - Download only when `download_available` is true. The archive contains the best iteration checkpoint, which may not be the final iteration.
 
